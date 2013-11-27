@@ -3,15 +3,26 @@
 set -x
 set -e
 
-if ! rpm -q lxc >/dev/null ; then
+if ! rpm -q libcap-devel >/dev/null ; then
     yum -y upgrade
-    yum -y --enablerepo=epel-testing install bridge-utils lxc libcgroup
+    yum -y install bridge-utils libcap-devel libcgroup
 fi
 
 for svc in cgconfig cgred; do
     service ${svc} stop
     chkconfig ${svc} off
 done
+
+## need to build lxc from source; the one available in epel-testing doesn't work
+## with Docker.
+if [ ! -e /usr/local/bin/lxc-version ]; then
+    git clone https://github.com/lxc/lxc.git /tmp/lxc
+    pushd /tmp/lxc
+    ./autogen.sh
+    ./configure
+    make
+    make install
+fi
 
 fgrep -q /cgroup /etc/fstab || echo "none        /cgroup        cgroup        defaults    0    0" >> /etc/fstab
 mount | fgrep -q /cgroup || mount /cgroup
@@ -47,7 +58,8 @@ fi
 service network restart
 
 if [ ! -e /usr/local/bin/docker ]; then
-    curl -o /usr/local/bin/docker https://get.docker.io/builds/Linux/x86_64/docker-latest 
+    # curl -o /usr/local/bin/docker https://get.docker.io/builds/Linux/x86_64/docker-latest 
+    cp /vagrant/docker-latest /usr/local/bin/docker
     chmod +x /usr/local/bin/docker
 fi
 
