@@ -45,3 +45,6 @@ if [ ! -e /usr/local/bin/docker ]; then
     curl -o /usr/local/bin/docker https://get.docker.io/builds/Linux/x86_64/docker-latest 
     chmod +x /usr/local/bin/docker
 fi
+
+## ignore non-zero exit as daemon's not running
+/usr/local/bin/docker version || :
