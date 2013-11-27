@@ -12,6 +12,7 @@ for svc in cgconfig cgred; do
 done
 
 fgrep -q /cgroup /etc/fstab || echo "none        /cgroup        cgroup        defaults    0    0" >> /etc/fstab
+mount | fgrep -q /cgroup || mount /cgroup
 
 if [ ! -e /etc/sysctl.d/docker ]; then
     [ -d /etc/sysctl.d ] || mkdir /etc/sysctl.d
