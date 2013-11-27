@@ -3,8 +3,10 @@
 set -x
 set -e
 
-yum -y upgrade
-yum -y --enablerepo=epel-testing install bridge-utils lxc hwloc libcgroup
+if ! rpm -q lxc >/dev/null ; then
+    yum -y upgrade
+    yum -y --enablerepo=epel-testing install bridge-utils lxc libcgroup
+fi
 
 for svc in cgconfig cgred; do
     service ${svc} stop
@@ -20,9 +22,11 @@ if [ ! -e /etc/sysctl.d/docker ]; then
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/docker
 fi
 
-if [ ! -e /etc/sysconfig/network-scripts/ifcfg-brdocker ]; then
-    cat << EOF > /etc/sysconfig/network-scripts/ifcfg-brdocker
-DEVICE="brdocker"
+bridge_if_dev="docker0"
+
+if [ ! -e /etc/sysconfig/network-scripts/ifcfg-${bridge_if_dev} ]; then
+    cat << EOF > /etc/sysconfig/network-scripts/ifcfg-${bridge_if_dev}
+DEVICE="${bridge_if_dev}"
 ONBOOT="yes"
 TYPE="Bridge"
 NETMASK="255.255.0.0"
@@ -34,6 +38,7 @@ fi
 
 if [ ! -e /etc/sysconfig/iptables ]; then
     iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -o ${bridge_if_dev} -j MASQUERADE
     
     service iptables save
 fi
@@ -48,3 +53,5 @@ fi
 
 ## ignore non-zero exit as daemon's not running
 /usr/local/bin/docker version || :
+
+uname -a
